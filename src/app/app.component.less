@@ -110,6 +110,7 @@ kbd { display: inline-grid; min-width: 21px; height: 21px; padding: 0 5px; place
 .legend-dot.variant { background: #ca9438; }
 .legend-dot.error { background: #bd4a42; }
 .legend-dot.unknown { background: #aaa69c; }
+.legend-dot.pending { background: #8d6fc2; }
 .meter-lines { padding: 10px; }
 .meter-line {
   position: relative;
@@ -145,11 +146,23 @@ kbd { display: inline-grid; min-width: 21px; height: 21px; padding: 0 5px; place
 .meter-character.is-variant { background: #fbf4e3; border-color: #e0c88f; }
 .meter-character.is-error { background: #faecea; border-color: #daa29e; }
 .meter-character.is-unknown { background: #f1f0ec; border-color: #d3d0c8; }
+.meter-character.is-pending { background: #f3eff9; border-color: #bfa9dc; }
+.meter-character.is-pending::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-top: 14px solid #8d6fc2;
+  border-right: 14px solid transparent;
+  border-radius: 7px 0 0 0;
+}
 .expected { display: block; color: #999285; font: 9px/1.2 "Songti SC", serif; }
 .hanzi { display: block; margin: 6px 0 4px; font: 27px/1 "Songti SC", "STSong", serif; }
 .mark-row { display: flex; height: 14px; align-items: center; justify-content: center; gap: 3px; }
 .mark-row em { padding: 1px 4px; border-radius: 5px; color: #1f654f; background: #dcefe5; font-size: 8px; font-style: normal; }
 .mark-row i { color: #9b613c; font-size: 9px; font-style: normal; }
+.mark-row .pending-flag { padding: 1px 4px; border-radius: 5px; color: #fff; background: #8d6fc2; font-size: 8px; font-style: normal; }
+.mark-row .adj-flag { padding: 1px 4px; border-radius: 5px; color: #2c5d8f; background: #dfeaf6; font: 8px/1.4 Consolas, monospace; font-weight: 700; }
 .meter-footer { display: flex; justify-content: space-between; gap: 10px; padding: 10px 14px; color: #858075; background: #f7f5ef; font-size: 10px; }
 
 .inspector-panel > *:not(.section-title) { margin-left: 14px; margin-right: 14px; }
@@ -161,6 +174,45 @@ kbd { display: inline-grid; min-width: 21px; height: 21px; padding: 0 5px; place
 .tone-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
 .tone-buttons button { padding-inline: 4px; }
 .switch-line { display: flex; align-items: center; gap: 8px; color: #747068; font-size: 11px; }
+
+.tone-buttons.is-locked { opacity: .55; }
+.polyphone-hint { margin-top: 6px; }
+.polyphone-hint ::ng-deep .ant-alert-message { font-size: 11px; }
+.polyphone-hint ::ng-deep .ant-alert-description { font-size: 10px; }
+.card-tag { margin-top: 5px; }
+.large-hanzi.is-pending { background: #8d6fc2; }
+
+.adjudication-block {
+  margin-top: 12px;
+  padding: 10px 11px 11px;
+  border: 1px solid #d9cdea;
+  border-radius: 9px;
+  background: #f8f5fc;
+}
+.adjudication-block .field-label { margin-top: 8px; }
+.adjudication-title { display: flex; align-items: center; gap: 6px; margin-top: 0 !important; }
+.inline-tag { margin: 0; line-height: 1.4; }
+.reading-options { display: grid; gap: 6px; }
+.reading-option {
+  display: grid;
+  gap: 2px;
+  padding: 7px 9px;
+  text-align: left;
+  border: 1px solid #d8d2e4;
+  border-radius: 7px;
+  background: #fff;
+  cursor: pointer;
+  transition: .15s ease;
+}
+.reading-option:hover { border-color: #a992cf; }
+.reading-option.is-selected { border-color: #7c5bb5; box-shadow: 0 0 0 2px rgba(124,91,181,.15); background: #fbf9ff; }
+.reading-option strong { font-size: 13px; font-family: Consolas, "Songti SC", serif; }
+.reading-option strong em { padding: 0 3px; border-radius: 4px; color: #fff; background: #7c5bb5; font-size: 9px; font-style: normal; }
+.reading-option small { color: #5d5866; font-size: 10px; }
+.reading-examples { color: #938da0; font-size: 9px; }
+.witness-rule { margin: 5px 0 0; color: #8a8494; font-size: 9px; line-height: 1.6; }
+.adjudication-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 9px; }
+.adjudication-note { margin-top: 9px; }
 
 .audit-layout { display: grid; grid-template-columns: minmax(560px, 1.15fr) minmax(380px, .85fr); gap: 12px; align-items: start; }
 .issue-list { padding: 9px; display: grid; gap: 7px; }
@@ -261,6 +313,7 @@ kbd { display: inline-grid; min-width: 21px; height: 21px; padding: 0 5px; place
   .meter-workbench { grid-template-columns: 250px minmax(500px, 1fr); }
   .inspector-panel { grid-column: 1 / -1; position: static; display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 16px; }
   .inspector-panel .section-title, .inspector-panel .selected-char-card, .inspector-panel .field-label, .inspector-panel .tone-buttons, .inspector-panel .switch-line { grid-column: span 1; }
+  .inspector-panel .adjudication-block { grid-column: 1 / -1; }
 }
 
 @media (max-width: 900px) {

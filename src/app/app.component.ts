@@ -53,11 +53,23 @@ export class AppComponent {
   get checkedRate(): number {
     const cells = this.store.analysis().flatMap((line) => line.cells);
     if (!cells.length) return 0;
-    return Math.round((cells.filter((cell) => cell.actual !== '?').length / cells.length) * 100);
+    // 待核多音字沿用的只是字典缺省，不计入已确认
+    const settled = cells.filter((cell) => cell.actual !== '?' && !cell.pendingReview).length;
+    return Math.round((settled / cells.length) * 100);
   }
 
   setTone(tone: '平' | '仄' | '中' | '?'): void {
-    this.store.setMark({ tone });
+    this.store.setManualTone(tone);
+  }
+
+  onConfirmAdjudication(): void {
+    const valid = this.store.confirmAdjudication();
+    this.store.toast.set(valid ? '音义已裁定，该字位平仄已重算' : '词证在本句中核对不上，已留在待核');
+  }
+
+  onReconfirm(): void {
+    const ok = this.store.reconfirmAdjudication();
+    this.store.toast.set(ok ? '词证核对相符，已恢复裁定' : '词证仍核对不上，继续待核');
   }
 
   updateSource(source: string): void {
