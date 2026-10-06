@@ -14,6 +14,7 @@ import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { METER_TEMPLATES, PoetryStoreService } from './services/poetry-store.service';
+import { ReadingDictionaryService } from './services/reading-dictionary.service';
 
 @Component({
   selector: 'app-root',
@@ -39,25 +40,53 @@ import { METER_TEMPLATES, PoetryStoreService } from './services/poetry-store.ser
 })
 export class AppComponent {
   readonly store = inject(PoetryStoreService);
+  readonly readings = inject(ReadingDictionaryService);
   readonly templates = METER_TEMPLATES;
   readonly selectedCell = computed(() => this.store.selectedCell());
+
+  readonly candidateReadings = computed(() => {
+    const cell = this.selectedCell();
+    return cell ? this.readings.readingsOf(cell.char) : [];
+  });
+
+  /** 当前字位已选读音（裁断），未裁断多音字取字典默认音 */
+  readonly selectedPinyin = computed(() => {
+    const cell = this.selectedCell();
+    if (!cell) return '';
+    return cell.mark.adjudication?.pinyin ?? (cell.polyphone ? this.readings.getPolyphone(cell.char)?.defaultPinyin ?? '' : '');
+  });
 
   get totalErrors(): number {
     return this.store.issues().filter((issue) => issue.level === 'error').length;
   }
 
-  get totalWarnings(): number {
-    return this.store.issues().filter((issue) => issue.level === 'warning').length;
+  get totalReviews(): number {
+    return this.store.analysis().reduce((total, line) => total + line.reviews, 0);
   }
 
   get checkedRate(): number {
     const cells = this.store.analysis().flatMap((line) => line.cells);
     if (!cells.length) return 0;
-    return Math.round((cells.filter((cell) => cell.actual !== '?').length / cells.length) * 100);
+    const settled = cells.filter((cell) => cell.actual !== '?' && cell.status !== 'review').length;
+    return Math.round((settled / cells.length) * 100);
   }
 
   setTone(tone: '平' | '仄' | '中' | '?'): void {
+    // 多音字平仄由音义裁断决定，手工平仄不得绕过词证直接覆盖
+    const cell = this.selectedCell();
+    if (cell?.polyphone) return;
     this.store.setMark({ tone });
+  }
+
+  pickReading(pinyin: string): void {
+    const cell = this.selectedCell();
+    if (!cell) return;
+    const evidence = cell.mark.adjudication?.evidence ?? '';
+    this.store.adjudicateReading(pinyin, evidence);
+  }
+
+  updateEvidence(evidence: string): void {
+    this.store.adjudicateReading(this.selectedPinyin(), evidence);
   }
 
   updateSource(source: string): void {

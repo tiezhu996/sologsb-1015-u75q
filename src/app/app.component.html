@@ -40,7 +40,7 @@
     </nz-select>
     <div class="issue-pills">
       <nz-tag nzColor="error">{{ totalErrors }} 处出律</nz-tag>
-      <nz-tag nzColor="warning">{{ totalWarnings }} 处待核</nz-tag>
+      <nz-tag nzColor="warning">{{ totalReviews }} 字音待核</nz-tag>
       <nz-tag>{{ store.differences().length }} 处异文</nz-tag>
     </div>
   </section>
@@ -88,6 +88,7 @@
               <span class="legend-dot variant"></span>可接受
               <span class="legend-dot error"></span>出律
               <span class="legend-dot unknown"></span>待标
+              <span class="legend-badge">核</span>多音待核
             </div>
           </div>
           <div class="meter-lines">
@@ -95,7 +96,7 @@
               <article class="meter-line" [class.is-rhyme-line]="store.template().rhymeLines.includes(line.index)">
                 <div class="line-label">
                   <strong>第 {{ line.index + 1 }} 句</strong>
-                  <small>{{ line.errors }} 出律 · {{ line.variants }} 变体</small>
+                  <small>{{ line.errors }} 出律 · {{ line.variants }} 变体 · {{ line.reviews }} 待核</small>
                 </div>
                 <div class="character-row">
                   @for (cell of line.cells; track cell.position) {
@@ -106,6 +107,8 @@
                       [class.is-variant]="cell.status === 'variant'"
                       [class.is-error]="cell.status === 'error'"
                       [class.is-unknown]="cell.status === 'unknown'"
+                      [class.is-review]="cell.status === 'review'"
+                      [class.is-adjudicated]="cell.adjudicationState === 'confirmed'"
                       nz-tooltip
                       [nzTooltipTitle]="cell.message"
                       (click)="store.selectCell(line.index, cell.position)"
@@ -115,6 +118,8 @@
                       <span class="mark-row">
                         @if (cell.mark.rhyme) { <em>{{ cell.mark.rhyme }}</em> }
                         @if (cell.mark.pauseAfter) { <i>顿</i> }
+                        @if (cell.status === 'review') { <b class="tone-badge pending">核</b> }
+                        @if (cell.adjudicationState === 'confirmed') { <b class="tone-badge confirmed">断</b> }
                       </span>
                     </button>
                   }
@@ -127,7 +132,7 @@
           </div>
           <div class="meter-footer">
             <span>模板：{{ store.template().summary }}</span>
-            <span>一三五位置可判为可接受变体；韵脚重复单独提示。</span>
+            <span>一三五位置可判为可接受变体；多音字未补词证前一律待核，不出出律结论。</span>
           </div>
         </main>
 
@@ -146,13 +151,67 @@
                 <p>{{ cell.message }}</p>
               </div>
             </div>
-            <label class="field-label">平仄</label>
-            <div class="tone-buttons">
-              <button nz-button [nzType]="cell.mark.tone === '平' ? 'primary' : 'default'" (click)="setTone('平')">平</button>
-              <button nz-button [nzType]="cell.mark.tone === '仄' ? 'primary' : 'default'" (click)="setTone('仄')">仄</button>
-              <button nz-button [nzType]="cell.mark.tone === '中' ? 'primary' : 'default'" (click)="setTone('中')">中</button>
-              <button nz-button [nzType]="cell.mark.tone === '?' ? 'primary' : 'default'" (click)="setTone('?')">待定</button>
-            </div>
+
+            @if (cell.polyphone) {
+              <div class="adjudication-block">
+                <label class="field-label">音义裁断（多音字）</label>
+                <div class="reading-options">
+                  @for (reading of candidateReadings(); track reading.pinyin) {
+                    <button
+                      type="button"
+                      class="reading-option"
+                      [class.is-selected]="selectedPinyin() === reading.pinyin"
+                      (click)="pickReading(reading.pinyin)"
+                    >
+                      <span class="reading-head">
+                        <strong>{{ reading.pinyin }}</strong>
+                        <em>{{ reading.tone }}声</em>
+                      </span>
+                      <small>{{ reading.gloss }}</small>
+                      @if (reading.example) { <i>例：{{ reading.example }}</i> }
+                      @if (reading.rhyme) { <i>{{ reading.rhyme }}</i> }
+                    </button>
+                  }
+                </div>
+                <label class="field-label">邻字 / 词证</label>
+                <input
+                  nz-input
+                  placeholder="如：重……阳（本句相邻成词的字）"
+                  [ngModel]="cell.mark.adjudication?.evidence ?? ''"
+                  (ngModelChange)="updateEvidence($event)"
+                />
+                <p class="evidence-hint">须写本句中与该字相邻成词的字或词（双字成词需出现在句中；单字参照须在前后三字内）。</p>
+                @if (cell.mark.adjudication) {
+                  <div class="adjudication-state" [class.is-confirmed]="cell.adjudicationState === 'confirmed'">
+                    @if (cell.adjudicationState === 'confirmed') {
+                      <span>裁断已定：取 {{ cell.mark.adjudication.pinyin }}（{{ cell.mark.adjudication.gloss }}），平仄已按此重算为「{{ cell.actual }}」。</span>
+                    } @else {
+                      <span>待核：{{ cell.reviewReason }}。补不上词证只能留在待核，不进入出律结论。</span>
+                    }
+                  </div>
+                  <button nz-button nzSize="small" (click)="store.clearAdjudication()">撤回裁断（回字典缺省）</button>
+                } @else {
+                  <div class="adjudication-state is-pending"><span>未裁断：暂按字典默认音「{{ selectedPinyin() }}」计平仄，结果标待核，不作硬性出律。</span></div>
+                }
+                <p class="scope-note">裁断只记本字位（第 {{ store.selectedLine() + 1 }} 句第 {{ cell.position + 1 }} 字）；同字在别处以该字位记录为准。</p>
+              </div>
+              <label class="field-label">平仄（随裁断音重算）</label>
+              <div class="tone-buttons is-readonly">
+                <button nz-button [nzType]="cell.actual === '平' ? 'primary' : 'default'" disabled>平</button>
+                <button nz-button [nzType]="cell.actual === '仄' ? 'primary' : 'default'" disabled>仄</button>
+                <button nz-button [nzType]="cell.actual === '中' ? 'primary' : 'default'" disabled>中</button>
+                <button nz-button [nzType]="cell.actual === '?' ? 'primary' : 'default'" disabled>待定</button>
+              </div>
+            } @else {
+              <label class="field-label">平仄</label>
+              <div class="tone-buttons">
+                <button nz-button [nzType]="cell.mark.tone === '平' ? 'primary' : 'default'" (click)="setTone('平')">平</button>
+                <button nz-button [nzType]="cell.mark.tone === '仄' ? 'primary' : 'default'" (click)="setTone('仄')">仄</button>
+                <button nz-button [nzType]="cell.mark.tone === '中' ? 'primary' : 'default'" (click)="setTone('中')">中</button>
+                <button nz-button [nzType]="cell.mark.tone === '?' ? 'primary' : 'default'" (click)="setTone('?')">待定</button>
+              </div>
+            }
+
             <label class="field-label">停顿</label>
             <div class="switch-line">
               <nz-switch [ngModel]="cell.mark.pauseAfter" (ngModelChange)="store.setMark({ pauseAfter: $event })"></nz-switch>
